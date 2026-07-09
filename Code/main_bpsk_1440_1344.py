@@ -3,12 +3,19 @@ import scipy.io
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
 from scipy.special import erfc
+import time
+import logging
 
 from AWGN import awgn_channel
 from LDPC_Staircase_Encoder import LDPC_Staircase_Encoder
 from LDPC_Staircase_Decoder import LDPC_Staircase_Decoder
 from ldpc_encoder import ldpc_encode
 from spa_minsum_opt import spa_decoder
+
+# Configurazione globale del logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 
 
 # =====================================================================
@@ -54,18 +61,18 @@ k_axis = k // 2 # numero di bit per asse I e Q
 
 # Istanzia il codificatore
 encoder = LDPC_Staircase_Encoder(m, r, G_matrix, ldpc_encode)
-decoder = LDPC_Staircase_Decoder(m, r, w, alpha_c, alpha_n, v_max, v_I_max, H_matrix, spa_decoder, spa_max_iter=20)
+decoder = LDPC_Staircase_Decoder(m, r, w, alpha_c, alpha_n, v_max, v_I_max, H_matrix, spa_decoder, spa_max_iter=20, perm=perm)
 
 
 # Crea un flusso di bit casuale per riempire 122 blocchi
 # Info per blocco = 720 * (720 - 96) = 449.280 bit. 
 # 122 blocchi di info + 2 blocchi di terminazione = 124 blocchi totali.
-# 122 * 449.280 = 54.777.600 bit di info
+# 122 * 449.280 = 54.812.160 bit di info
 
-N_bits = 54777600
+N_bits = 54812160
 
 
-Eb_N0_dB_range = np.arange(3.5, 4.1, 0.1)
+Eb_N0_dB_range = np.arange(3.4, 3.5, 0.1)
 ber_list = []
 
 for Eb_N0_dB in Eb_N0_dB_range:
@@ -77,26 +84,28 @@ for Eb_N0_dB in Eb_N0_dB_range:
 
     # Concatenazione dei blocchi codificati in un unico flusso di bit
     bits_stream = np.concatenate([block.ravel() for block in encoded_blocks])
-    print(f"Eb/N0 (dB): {Eb_N0_dB}, Sequenza codificata")
+    logger.info(f"Eb/N0 (dB): {Eb_N0_dB}, Sequenza codificata")
 
     # Calcolo del Code Rate (R)
     R_code = len(bits) / len(bits_stream)
-    print(f"Eb/N0 (dB): {Eb_N0_dB}, Code Rate (R): {R_code:.4f}")
+    logger.info(f"Eb/N0 (dB): {Eb_N0_dB}, Code Rate (R): {R_code:.4f}")
 
 
     # Modulazione
     mod_data = bpsk_modulate(bits_stream)
-    print(f"Eb/N0 (dB): {Eb_N0_dB}, Modulazione BPSK completata")
+    logger.info(f"Eb/N0 (dB): {Eb_N0_dB}, Modulazione BPSK completata")
 
 
     # Canale
     received_data, noise_var = awgn_channel(mod_data, Eb_N0_dB, M, R_code)
+    received_data = np.real(received_data)  # Prende solo la parte reale per BPSK
 
 
     rx_llrs = llr_bpsk(np.real(received_data), noise_var)
+    #rx_llrs = 1000 * bpsk_modulate(bits_stream)
 
     # LDPC STAIRCASE DECODER (Da Probabilità a Bit utente)
-    decoded_bits = decoder.decode_sequence(rx_llrs, num_termination_blocks=2)
+    decoded_bits = decoder.decode_sequence(rx_llrs, original_bits = bits, num_termination_blocks=2)
 
 
     # Troncamento per eliminare padding e zeri di terminazione
@@ -110,7 +119,7 @@ for Eb_N0_dB in Eb_N0_dB_range:
     ber_list.append(ber)
 
 
-    print(f"Eb/N0 (dB): {Eb_N0_dB}, Bit Error Rate (BER): {ber:.4e}")
+    logger.info(f"Eb/N0 (dB): {Eb_N0_dB}, Bit Error Rate (BER): {ber:.4e}")
 
 
 #  Calcolo Curva Teorica
@@ -122,9 +131,10 @@ arg = np.sqrt( (3 * k * Eb_N0_linear_range) / ((M - 1) * 2) )
 ber_teorico = (2 / k) * (1 - 1/np.sqrt(M)) * erfc(arg)
 
 # Filtra i dati per rimuovere i punti non visualizzabili (BER = 0)
-valid_idx = ber_list > 0
+ber_array = np.asarray(ber_list)
+valid_idx = ber_array > 0
 Eb_N0_dB_plot = Eb_N0_dB_range[valid_idx]
-ber_plot = ber_list[valid_idx]
+ber_plot = ber_array[valid_idx]
 
 
 plt.figure(figsize=(8, 6))
