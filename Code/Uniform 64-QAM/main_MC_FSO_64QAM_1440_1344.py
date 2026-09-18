@@ -24,7 +24,6 @@ Sono disponibili due modalità:
    oppure quando si raggiunge MAX_SEQUENCES.
 
 2) SIMULATION_MODE = "fixed"
-   Serve per la curva finale.
    Per ogni Eb/N0 vengono simulate esattamente FIXED_SEQUENCES sequenze.
    Non c'è early stopping dipendente dagli errori.
 
