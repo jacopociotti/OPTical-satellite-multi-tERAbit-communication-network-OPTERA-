@@ -1,10 +1,6 @@
 """
 Monte Carlo 64-QAM su canale AWGN con LDPC Staircase (1440, 1344).
 
-Obiettivo principale:
-    stimare il waterfall del decoder Staircase nella regione in cui una singola
-    sequenza mostra un comportamento quasi tutto-o-niente.
-
 Per ogni Eb/N0:
     - vengono generate sequenze indipendenti;
     - l'encoder riparte da B0 = 0;
