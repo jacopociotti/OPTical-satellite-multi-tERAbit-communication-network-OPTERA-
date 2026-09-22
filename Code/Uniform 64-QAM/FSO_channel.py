@@ -117,7 +117,8 @@ def fso_coherent_channel(symbols, Eb_N0_dB, M, rate, alpha, beta, block_size):
 
     I_pt = pointing_error(num_symbols = len(symbols), A0 = 0.8532, w_eq = 0.1773, sigma_s = 0.01, block_size = block_size)
 
-    I_att = atmospheric_attenuation(distance_km = 1.0, attenuation_db_km = 0.2)
+    I_att = atmospheric_attenuation(distance_km = 1.0, attenuation_db_km = 0.2208)
+
 
     I_tot = I_tur * I_pt * I_att  # Irradianza totale
 
